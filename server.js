@@ -17,5 +17,10 @@ app.use('/api/webhook',   require('./routes/webhook'));
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`API running on port ${PORT}`));
+// Local dev
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3001;
+  app.listen(PORT, () => console.log(`API running on port ${PORT}`));
+}
+
+module.exports = app;
