@@ -132,7 +132,7 @@ router.post('/chat', h(async (req, res) => {
 
   try {
     const stream = await client.messages.stream({
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-3-haiku-20240307',
       max_tokens: 2048,
       system: buildSystemPrompt(role),
       messages: clean,
