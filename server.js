@@ -60,6 +60,8 @@ app.use('/api/webhook', require('./routes/webhook')); // has own HMAC auth
 
 // ─── Protected routes (require X-API-Key header in production) ────────────
 app.use('/api/', requireApiKey);
+app.use('/api/recipes',      require('./routes/recipes'));
+app.use('/api/forecasting', require('./routes/forecasting'));
 app.use('/api/inventory',    require('./routes/inventory'));
 app.use('/api/orders',       require('./routes/orders'));
 app.use('/api/sales',        require('./routes/sales'));
