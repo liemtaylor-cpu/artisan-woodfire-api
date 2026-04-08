@@ -1,4 +1,4 @@
-const { INVENTORY, RECIPES, TODAY_SALES, ORDERS } = require('./seed');
+const { INVENTORY, RECIPES, TODAY_SALES, ORDERS, STAFF } = require('./seed');
 
 // Shared mutable store — all routes reference this object.
 // On cold start data comes from seed; on warm start it's already in memory.
@@ -8,6 +8,7 @@ const store = {
   inventory:    INVENTORY.map(i => ({ ...i })),
   orders:       ORDERS.map(o => ({ ...o })),
   sales:        TODAY_SALES.map(s => ({ ...s })),
+  staff:        STAFF.map(s => ({ ...s })),
   transactions: new Set(),     // processed transaction_ids (idempotency)
   txLog:        [],            // full transaction records
   duties:       {},

@@ -1,12 +1,58 @@
 const express = require('express');
 const router = express.Router();
 const { STAFF, TODAY_SHIFTS } = require('../data/seed');
+const store = require('../data/store');
+const { ensureLoaded, persist } = require('../lib/persistence');
 const sling = require('../lib/sling');
 
+const h = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
 // GET /api/staff — roster + today's shifts
-router.get('/', (req, res) => {
-  res.json({ staff: STAFF, shifts: TODAY_SHIFTS });
-});
+router.get('/', h(async (req, res) => {
+  await ensureLoaded();
+  res.json({ staff: store.staff, shifts: TODAY_SHIFTS });
+}));
+
+// PUT /api/staff/:id — update an employee
+router.put('/:id', h(async (req, res) => {
+  await ensureLoaded();
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'id must be a number' });
+  const idx = store.staff.findIndex(s => s.id === id);
+  if (idx === -1) return res.status(404).json({ error: 'Employee not found' });
+  const { name, role, phone, rate, status, skills } = req.body;
+  if (name    !== undefined) store.staff[idx].name   = name;
+  if (role    !== undefined) store.staff[idx].role   = role;
+  if (phone   !== undefined) store.staff[idx].phone  = phone;
+  if (rate    !== undefined) store.staff[idx].rate   = rate;
+  if (status  !== undefined) store.staff[idx].status = status;
+  if (skills  !== undefined) store.staff[idx].skills = skills;
+  await persist('staff');
+  res.json(store.staff[idx]);
+}));
+
+// POST /api/staff — add a new employee
+router.post('/', h(async (req, res) => {
+  await ensureLoaded();
+  const { name, role, phone, rate, status, skills } = req.body;
+  const id = Math.max(...store.staff.map(s => s.id), 0) + 1;
+  const employee = { id, name, role, phone, rate, status: status || 'active', skills: skills || [] };
+  store.staff.push(employee);
+  await persist('staff');
+  res.status(201).json(employee);
+}));
+
+// DELETE /api/staff/:id — remove an employee
+router.delete('/:id', h(async (req, res) => {
+  await ensureLoaded();
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) return res.status(400).json({ error: 'id must be a number' });
+  const idx = store.staff.findIndex(s => s.id === id);
+  if (idx === -1) return res.status(404).json({ error: 'Employee not found' });
+  store.staff.splice(idx, 1);
+  await persist('staff');
+  res.json({ deleted: true });
+}));
 
 /**
  * POST /api/staff/alert
