@@ -56,10 +56,11 @@ router.post('/pos', validateShift4Webhook, h(async (req, res) => {
   // Support both Shift4 event envelope formats:
   // Real Shift4: { type: "CHARGE_SUCCEEDED", data: { id, details: { lineItems } } }
   // Legacy/test:  { event: "order.completed", transaction_id, order: { items } }
-  const event         = body.type        || body.event        || null;
+  const event          = body.type        || body.event        || null;
   const transaction_id = body.data?.id   || body.transaction_id || null;
-  const timestamp     = body.created     || body.timestamp    || new Date().toISOString();
-  const location_id   = body.locationId  || body.location_id  || null;
+  const timestamp      = body.created    || body.timestamp    || new Date().toISOString();
+  const location_id    = body.locationId || body.location_id  || null;
+  const amountCents    = body.data?.amount ?? null;   // Shift4 sends amount in cents
 
   // Normalize line items from either format
   const rawItems = body.data?.details?.lineItems
@@ -104,6 +105,7 @@ router.post('/pos', validateShift4Webhook, h(async (req, res) => {
     location_id: location_id || null,
     timestamp,
     receivedAt: new Date().toISOString(),
+    amount: amountCents !== null ? amountCents / 100 : null,  // convert cents → dollars
     order,
     deductions,
     lowStockAlerts: deductions.filter(d => d.wentLow).map(d => d.name),
