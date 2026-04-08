@@ -1,28 +1,28 @@
 /**
  * Staff portal authentication.
- * POST /api/auth/staff  { password: "..." }  → { ok: true } or 401
+ * POST /api/auth/staff  { password: "..." }  → { ok: true, role: "owner"|"manager"|"employee" } or 401
  *
- * The actual password lives in STAFF_PORTAL_PASSWORD env var — never in frontend code.
- * Frontend stores a flag in localStorage after a successful check.
+ * Passwords live in env vars — never in frontend code.
+ * Defaults are for local dev only; set real passwords in Vercel env vars.
  */
 const express = require('express');
 const router = express.Router();
 
 router.post('/staff', (req, res) => {
-  const { password } = req.body;
-  if (!password) return res.status(400).json({ error: 'password required' });
-
-  const expected = process.env.STAFF_PORTAL_PASSWORD;
-  if (!expected) {
-    // Not configured — allow any non-empty password in dev
-    return res.json({ ok: true });
+  const { password } = req.body || {};
+  if (!password || typeof password !== 'string') {
+    return res.status(400).json({ error: 'Password required' });
   }
 
-  if (password !== expected) {
-    return res.status(401).json({ error: 'Incorrect password' });
-  }
+  const ownerPw    = process.env.OWNER_PASSWORD    || 'owner2026';
+  const managerPw  = process.env.MANAGER_PASSWORD  || 'manager2026';
+  const employeePw = process.env.EMPLOYEE_PASSWORD || 'employee2026';
 
-  res.json({ ok: true });
+  if (password === ownerPw)    return res.json({ ok: true, role: 'owner' });
+  if (password === managerPw)  return res.json({ ok: true, role: 'manager' });
+  if (password === employeePw) return res.json({ ok: true, role: 'employee' });
+
+  return res.status(401).json({ error: 'Invalid password' });
 });
 
 module.exports = router;
