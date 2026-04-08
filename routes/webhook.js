@@ -43,34 +43,66 @@ function processOrder(order) {
   return results;
 }
 
+// GET /api/webhook/pos — browser-friendly confirmation (Shift4 only POSTs here)
+router.get('/pos', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Shift4 webhook endpoint is live. This URL only accepts POST requests from Shift4.' });
+});
+
 // POST /api/webhook/pos — receives live Shift4 events
 router.post('/pos', validateShift4Webhook, h(async (req, res) => {
   await ensureLoaded();
-  const { event, transaction_id, timestamp, location_id, order } = req.body || {};
+  const body = req.body || {};
+
+  // Support both Shift4 event envelope formats:
+  // Real Shift4: { type: "CHARGE_SUCCEEDED", data: { id, details: { lineItems } } }
+  // Legacy/test:  { event: "order.completed", transaction_id, order: { items } }
+  const event         = body.type        || body.event        || null;
+  const transaction_id = body.data?.id   || body.transaction_id || null;
+  const timestamp     = body.created     || body.timestamp    || new Date().toISOString();
+  const location_id   = body.locationId  || body.location_id  || null;
+
+  // Normalize line items from either format
+  const rawItems = body.data?.details?.lineItems
+    || body.data?.lineItems
+    || body.order?.items
+    || [];
+
+  const normalizedItems = rawItems.map(item => ({
+    sku: item.sku || item.productCode || item.description || item.name || '',
+    qty: item.quantity ?? item.qty ?? 1,
+  }));
+
+  // Respond 200 immediately — Shift4 marks anything else as FAILED
+  // (We'll still process, but we ack first)
 
   if (!transaction_id || typeof transaction_id !== 'string' || transaction_id.length > 200) {
-    return res.status(400).json({ error: 'Invalid transaction_id' });
+    return res.status(200).json({ status: 'ignored', reason: 'Missing or invalid transaction/charge ID' });
   }
-  if (!order || !Array.isArray(order.items) || order.items.length === 0) {
-    return res.status(400).json({ error: 'Missing or empty order.items' });
-  }
-  if (order.items.length > 100) {
-    return res.status(400).json({ error: 'Too many line items' });
-  }
-  if (event && event !== 'order.completed') {
+
+  const ACCEPTED_EVENTS = ['CHARGE_SUCCEEDED', 'order.completed', 'charge.succeeded'];
+  if (event && !ACCEPTED_EVENTS.includes(event)) {
     return res.status(200).json({ status: 'ignored', reason: `event "${event}" not processed` });
   }
+
+  if (normalizedItems.length === 0) {
+    return res.status(200).json({ status: 'ignored', reason: 'No line items found in payload' });
+  }
+  if (normalizedItems.length > 100) {
+    return res.status(200).json({ status: 'ignored', reason: 'Too many line items' });
+  }
+
   if (store.transactions.has(transaction_id)) {
     return res.status(200).json({ status: 'duplicate', transaction_id });
   }
 
+  const order = { items: normalizedItems };
   const deductions = processOrder(order);
   store.transactions.add(transaction_id);
   const record = {
     transaction_id,
-    event: event || 'order.completed',
+    event: event || 'CHARGE_SUCCEEDED',
     location_id: location_id || null,
-    timestamp: timestamp || new Date().toISOString(),
+    timestamp,
     receivedAt: new Date().toISOString(),
     order,
     deductions,
