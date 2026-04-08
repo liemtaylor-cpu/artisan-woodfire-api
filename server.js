@@ -69,6 +69,7 @@ app.use('/api/staff',        require('./routes/staff'));
 app.use('/api/duties',       require('./routes/duties'));
 app.use('/api/competencies', require('./routes/competencies'));
 app.use('/api/settings',     require('./routes/settings'));
+app.use('/api/ai', require('./routes/ai'));
 
 app.get('/api/health', (req, res) => {
   const shift4 = require('./lib/shift4');
