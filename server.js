@@ -71,13 +71,19 @@ app.use('/api/duties',       require('./routes/duties'));
 app.use('/api/competencies', require('./routes/competencies'));
 app.use('/api/settings',     require('./routes/settings'));
 
-app.get('/api/health', (req, res) => res.json({
-  ok: true,
-  kvConfigured:     !!(process.env.KV_REST_API_URL),
-  shift4Configured: !!(process.env.SHIFT4_API_KEY),
-  slingConfigured:  !!(process.env.SLING_API_TOKEN),
-  authEnabled:      !!(process.env.API_SECRET_KEY),
-}));
+app.get('/api/health', (req, res) => {
+  const shift4 = require('./lib/shift4');
+  const sling  = require('./lib/sling');
+  res.json({
+    ok: true,
+    kvConfigured:      !!(process.env.KV_REST_API_URL),
+    shift4Configured:  shift4.isConfigured(),
+    shift4Simulated:   !shift4.isConfigured(),
+    slingConfigured:   sling.isConfigured(),
+    slingSimulated:    !sling.isConfigured(),
+    authEnabled:       !!(process.env.API_SECRET_KEY),
+  });
+});
 
 // ─── Error handler ─────────────────────────────────────────────────────────
 app.use((err, req, res, _next) => {

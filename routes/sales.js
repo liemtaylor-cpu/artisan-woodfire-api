@@ -11,23 +11,14 @@ router.get('/', async (req, res) => {
 
 /**
  * POST /api/sales/sync
- * Pulls today's real transactions from Shift4 and replaces store.sales.
- * Falls back gracefully if SHIFT4_API_KEY is not configured.
+ * Pulls today's transactions from Shift4 (real or simulated) and updates store.sales.
  */
 router.post('/sync', async (req, res) => {
   await ensureLoaded();
 
-  if (!process.env.SHIFT4_API_KEY) {
-    return res.status(503).json({
-      error: 'Shift4 not configured — set SHIFT4_API_KEY in environment variables',
-      configured: false,
-    });
-  }
-
   try {
-    const liveSales = await shift4.fetchTodaySales();
+    const { sales: liveSales, simulated } = await shift4.fetchTodaySales();
 
-    // Merge with existing store: update qty for known recipes, add new ones
     for (const liveSale of liveSales) {
       const existing = store.sales.find(s => s.recipeId === liveSale.recipeId);
       if (existing) existing.qty = liveSale.qty;
@@ -35,7 +26,13 @@ router.post('/sync', async (req, res) => {
     }
 
     await persist('sales');
-    res.json({ synced: true, sales: store.sales, count: liveSales.length });
+    res.json({
+      synced: true,
+      simulated,
+      sales: store.sales,
+      count: liveSales.length,
+      ...(simulated && { note: 'Running in simulation mode — set SHIFT4_API_KEY to sync real POS data' }),
+    });
   } catch (err) {
     console.error('[sales/sync] Shift4 error:', err.message);
     res.status(502).json({ error: `Shift4 sync failed: ${err.message}` });

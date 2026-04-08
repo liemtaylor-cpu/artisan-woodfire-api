@@ -117,4 +117,64 @@ router.get('/transactions', async (req, res) => {
   res.json(store.txLog);
 });
 
+/**
+ * POST /api/webhook/test
+ * Fires a simulated POS order through the full webhook pipeline — no HMAC required.
+ * Useful for testing inventory deduction, low-stock alerts, and Sling notifications
+ * without needing a real Shift4 account.
+ * Accepts optional body: { items: [{ sku, qty }] } or generates a random order.
+ */
+router.post('/test', async (req, res) => {
+  await ensureLoaded();
+
+  const shift4 = require('../lib/shift4');
+  const testOrder = req.body?.items?.length
+    ? {
+        event: 'order.completed',
+        transaction_id: `TEST-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
+        timestamp: new Date().toISOString(),
+        location_id: 'LOC-CHI-001',
+        order: { items: req.body.items },
+      }
+    : shift4.generateTestOrder();
+
+  // Run through the same pipeline as a real webhook (skip idempotency for test)
+  store.transactions.add(testOrder.transaction_id);
+  const deductions = processOrder(testOrder.order);
+
+  const record = {
+    transaction_id: testOrder.transaction_id,
+    event: testOrder.event,
+    location_id: testOrder.location_id,
+    timestamp: testOrder.timestamp,
+    receivedAt: new Date().toISOString(),
+    order: testOrder.order,
+    deductions,
+    lowStockAlerts: deductions.filter(d => d.wentLow).map(d => d.name),
+    test: true,
+  };
+  store.txLog.unshift(record);
+  if (store.txLog.length > 500) store.txLog = store.txLog.slice(0, 500);
+
+  await Promise.all([persist('inventory'), persist('sales'), persist('txLog')]);
+
+  // Fire Sling alerts for newly low items
+  for (const d of deductions.filter(d => d.wentLow)) {
+    const item = store.inventory.find(i => i.id === d.itemId);
+    if (item) {
+      sling.sendLowStockAlert(item.name, d.remaining, item.unit, item.supplier)
+        .catch(e => console.warn('[sling] low-stock alert failed:', e.message));
+    }
+  }
+
+  res.json({
+    status: 'test_processed',
+    transaction_id: testOrder.transaction_id,
+    order: testOrder.order,
+    inventoryUpdates: deductions.length,
+    lowStockAlerts: record.lowStockAlerts,
+    deductions,
+  });
+});
+
 module.exports = router;
