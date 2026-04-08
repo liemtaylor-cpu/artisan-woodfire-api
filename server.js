@@ -75,7 +75,7 @@ app.get('/api/health', (req, res) => {
   const sling  = require('./lib/sling');
   res.json({
     ok: true,
-    kvConfigured:      !!(process.env.KV_REST_API_URL),
+    kvConfigured:      !!(process.env.REDIS_URL),
     shift4Configured:  shift4.isConfigured(),
     shift4Simulated:   !shift4.isConfigured(),
     slingConfigured:   sling.isConfigured(),
