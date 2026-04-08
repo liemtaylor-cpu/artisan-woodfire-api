@@ -73,6 +73,15 @@ router.post('/pos', validateShift4Webhook, h(async (req, res) => {
     qty: item.quantity ?? item.qty ?? 1,
   }));
 
+  // Fallback: if no line items, try extracting SKU from top-level description
+  // (e.g. a manual test charge created in the Shift4 dashboard)
+  if (normalizedItems.length === 0) {
+    const desc = (body.data?.description || body.description || '').trim().toUpperCase();
+    if (desc && SKU_MAP[desc]) {
+      normalizedItems.push({ sku: desc, qty: 1 });
+    }
+  }
+
   // Respond 200 immediately — Shift4 marks anything else as FAILED
   // (We'll still process, but we ack first)
 
