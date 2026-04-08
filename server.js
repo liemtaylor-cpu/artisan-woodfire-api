@@ -19,13 +19,10 @@ app.use(cors({
   credentials: true,
 }));
 
-// ─── Capture raw body for webhook HMAC verification ───────────────────────
-app.use((req, res, next) => {
-  let raw = '';
-  req.on('data', chunk => { raw += chunk; });
-  req.on('end', () => { req.rawBody = raw; next(); });
-});
-app.use(express.json());
+// ─── Body parsing — captures raw bytes for webhook HMAC in one pass ───────
+app.use(express.json({
+  verify: (req, _res, buf) => { req.rawBody = buf.toString(); },
+}));
 
 // ─── Rate limiting ─────────────────────────────────────────────────────────
 // General: 200 requests per 15 min per IP
