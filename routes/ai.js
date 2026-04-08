@@ -107,48 +107,26 @@ router.post('/chat', h(async (req, res) => {
   await ensureLoaded();
 
   // Always open SSE first — errors delivered through stream so CORS never blocks the body
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders();
-
-  const sendError = (msg) => {
-    res.write(`data: ${JSON.stringify({ error: msg })}\n\n`);
-    res.write('data: [DONE]\n\n');
-    res.end();
-  };
-
   const client = getClient();
-  if (!client) return sendError('AI not configured — ask your admin to add the ANTHROPIC_API_KEY.');
+  if (!client) return res.status(503).json({ error: 'AI not configured — ANTHROPIC_API_KEY missing.' });
 
   const { messages, role } = req.body;
-  if (!Array.isArray(messages) || messages.length === 0) return sendError('messages array is required');
-  if (messages.length > 60) return sendError('Conversation too long — clear the chat and start again');
+  if (!Array.isArray(messages) || messages.length === 0) return res.status(400).json({ error: 'messages array is required' });
+  if (messages.length > 60) return res.status(400).json({ error: 'Conversation too long — clear the chat and start again' });
 
   const clean = messages.map(m => ({
     role: m.role === 'assistant' ? 'assistant' : 'user',
     content: String(m.content || '').slice(0, 6000),
   }));
 
-  try {
-    const stream = await client.messages.stream({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
-      system: buildSystemPrompt(role),
-      messages: clean,
-    });
+  const response = await client.messages.create({
+    model: 'claude-haiku-4-5-20251001',
+    max_tokens: 2048,
+    system: buildSystemPrompt(role),
+    messages: clean,
+  });
 
-    for await (const chunk of stream) {
-      if (chunk.type === 'content_block_delta' && chunk.delta?.type === 'text_delta') {
-        res.write(`data: ${JSON.stringify({ text: chunk.delta.text })}\n\n`);
-      }
-    }
-  } catch (err) {
-    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
-  }
-
-  res.write('data: [DONE]\n\n');
-  res.end();
+  res.json({ reply: response.content[0]?.text || '' });
 }));
 
 module.exports = router;
