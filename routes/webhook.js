@@ -62,8 +62,24 @@ router.post('/pos', validateShift4Webhook, h(async (req, res) => {
   const location_id    = body.locationId || body.location_id  || null;
   const amountCents    = body.data?.amount ?? null;   // Shift4 sends amount in cents
 
-  // Normalize line items from either format
-  const rawItems = body.data?.details?.lineItems
+  // Per Shift4 docs: webhook only contains the event ID.
+  // Fetch full charge details from Shift4 API to get line items.
+  let chargeData = body.data || {};
+  if (transaction_id && sling.isConfigured !== undefined && require('../lib/shift4').isConfigured()) {
+    try {
+      const shift4 = require('../lib/shift4');
+      const fullCharge = await shift4.fetchCharge(transaction_id);
+      chargeData = fullCharge;
+    } catch (e) {
+      console.warn('[webhook] Could not fetch full charge from Shift4:', e.message);
+      // Fall through and use whatever data came in the webhook body
+    }
+  }
+
+  // Normalize line items — try all known Shift4 payload locations
+  const rawItems = chargeData.details?.lineItems
+    || chargeData.lineItems
+    || body.data?.details?.lineItems
     || body.data?.lineItems
     || body.order?.items
     || [];
@@ -73,10 +89,9 @@ router.post('/pos', validateShift4Webhook, h(async (req, res) => {
     qty: item.quantity ?? item.qty ?? 1,
   }));
 
-  // Fallback: if no line items, try extracting SKU from top-level description
-  // (e.g. a manual test charge created in the Shift4 dashboard)
+  // Fallback: extract SKU from description field (manual test charges)
   if (normalizedItems.length === 0) {
-    const desc = (body.data?.description || body.description || '').trim().toUpperCase();
+    const desc = (chargeData.description || body.data?.description || body.description || '').trim().toUpperCase();
     if (desc && SKU_MAP[desc]) {
       normalizedItems.push({ sku: desc, qty: 1 });
     }
