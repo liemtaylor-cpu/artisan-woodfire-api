@@ -22,12 +22,12 @@ const INVENTORY = [
 ];
 
 const RECIPES = [
-  { id:1, name:"Margherita",           price:16, icon:"🍕", ingredients:[{id:1,qty:0.40},{id:5,qty:0.20},{id:13,qty:0.19},{id:14,qty:0.50},{id:4,qty:0.02}] },
-  { id:2, name:"Italian Sausage",      price:18, icon:"🍕", ingredients:[{id:1,qty:0.40},{id:5,qty:0.20},{id:13,qty:0.19},{id:10,qty:0.13},{id:4,qty:0.02}] },
-  { id:3, name:"Prosciutto & Arugula", price:22, icon:"🍕", ingredients:[{id:1,qty:0.40},{id:5,qty:0.15},{id:9,qty:0.06},{id:16,qty:0.06},{id:6,qty:0.03},{id:4,qty:0.02}] },
-  { id:4, name:"White Truffle",        price:20, icon:"🍕", ingredients:[{id:1,qty:0.40},{id:7,qty:0.13},{id:5,qty:0.10},{id:15,qty:0.03},{id:4,qty:0.03}] },
-  { id:5, name:"Burrata Garden",       price:21, icon:"🍕", ingredients:[{id:1,qty:0.40},{id:8,qty:0.50},{id:13,qty:0.19},{id:14,qty:0.50},{id:4,qty:0.02}] },
-  { id:6, name:"Pancetta Funghi",      price:19, icon:"🍕", ingredients:[{id:1,qty:0.40},{id:5,qty:0.20},{id:13,qty:0.19},{id:11,qty:0.08},{id:4,qty:0.02}] },
+  { id:1, name:"Margherita",           price:16, icon:"🍕", sku:"PIZZA-MARGHERITA",  ingredients:[{id:1,qty:0.40},{id:5,qty:0.20},{id:13,qty:0.19},{id:14,qty:0.50},{id:4,qty:0.02}] },
+  { id:2, name:"Italian Sausage",      price:18, icon:"🍕", sku:"PIZZA-SAUSAGE",     ingredients:[{id:1,qty:0.40},{id:5,qty:0.20},{id:13,qty:0.19},{id:10,qty:0.13},{id:4,qty:0.02}] },
+  { id:3, name:"Prosciutto & Arugula", price:22, icon:"🍕", sku:"PIZZA-PROSCIUTTO",  ingredients:[{id:1,qty:0.40},{id:5,qty:0.15},{id:9,qty:0.06},{id:16,qty:0.06},{id:6,qty:0.03},{id:4,qty:0.02}] },
+  { id:4, name:"White Truffle",        price:20, icon:"🍕", sku:"PIZZA-TRUFFLE",     ingredients:[{id:1,qty:0.40},{id:7,qty:0.13},{id:5,qty:0.10},{id:15,qty:0.03},{id:4,qty:0.03}] },
+  { id:5, name:"Burrata Garden",       price:21, icon:"🍕", sku:"PIZZA-BURRATA",     ingredients:[{id:1,qty:0.40},{id:8,qty:0.50},{id:13,qty:0.19},{id:14,qty:0.50},{id:4,qty:0.02}] },
+  { id:6, name:"Pancetta Funghi",      price:19, icon:"🍕", sku:"PIZZA-PANCETTA",    ingredients:[{id:1,qty:0.40},{id:5,qty:0.20},{id:13,qty:0.19},{id:11,qty:0.08},{id:4,qty:0.02}] },
 ];
 
 const TODAY_SALES = [

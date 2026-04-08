@@ -3,33 +3,21 @@ const router = express.Router();
 const store = require('../data/store');
 const { ensureLoaded, persist } = require('../lib/persistence');
 const { validateShift4Webhook } = require('../middleware/validateWebhook');
-const { RECIPES } = require('../data/seed');
 const sling = require('../lib/sling');
 
 // Wraps async handlers so thrown errors reach Express's error handler
 const h = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-// Map POS SKUs to internal recipe IDs
-const SKU_MAP = {
-  'PIZZA-MARGHERITA':  1,
-  'PIZZA-SAUSAGE':     2,
-  'PIZZA-PROSCIUTTO':  3,
-  'PIZZA-TRUFFLE':     4,
-  'PIZZA-BURRATA':     5,
-  'PIZZA-PANCETTA':    6,
-};
-
 function processOrder(order) {
   const results = [];
   order.items.forEach(lineItem => {
-    const recipeId = SKU_MAP[lineItem.sku];
-    if (!recipeId) return;
-    const recipe = RECIPES.find(r => r.id === recipeId);
+    // Build SKU map dynamically from store so recipe edits take effect immediately
+    const recipe = store.recipes.find(r => r.sku && r.sku.toUpperCase() === (lineItem.sku || '').toUpperCase());
     if (!recipe) return;
     const qty = Math.max(0, parseInt(lineItem.qty) || 1);
-    const sale = store.sales.find(s => s.recipeId === recipeId);
+    const sale = store.sales.find(s => s.recipeId === recipe.id);
     if (sale) sale.qty += qty;
-    else store.sales.push({ recipeId, qty });
+    else store.sales.push({ recipeId: recipe.id, qty });
     recipe.ingredients.forEach(ing => {
       const item = store.inventory.find(i => i.id === ing.id);
       if (!item) return;
@@ -92,7 +80,8 @@ router.post('/pos', validateShift4Webhook, h(async (req, res) => {
   // Fallback: extract SKU from description field (manual test charges)
   if (normalizedItems.length === 0) {
     const desc = (chargeData.description || body.data?.description || body.description || '').trim().toUpperCase();
-    if (desc && SKU_MAP[desc]) {
+    const matchedRecipe = store.recipes.find(r => r.sku && r.sku.toUpperCase() === desc);
+    if (desc && matchedRecipe) {
       normalizedItems.push({ sku: desc, qty: 1 });
     }
   }

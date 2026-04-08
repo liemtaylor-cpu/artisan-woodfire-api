@@ -6,6 +6,7 @@ const { INVENTORY, RECIPES, TODAY_SALES, ORDERS, STAFF } = require('./seed');
 // and saves back after every mutation.
 const store = {
   inventory:    INVENTORY.map(i => ({ ...i })),
+  recipes:      RECIPES.map(r => ({ ...r, ingredients: r.ingredients.map(i => ({ ...i })) })),
   orders:       ORDERS.map(o => ({ ...o })),
   sales:        TODAY_SALES.map(s => ({ ...s })),
   staff:        STAFF.map(s => ({ ...s })),
