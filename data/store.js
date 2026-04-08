@@ -8,6 +8,7 @@ const store = {
   transactions: new Set(),     // processed transaction_ids (idempotency)
   txLog:        [],            // full transaction records
   duties:       {},
+  competencies: {},
 };
 
 module.exports = store;
